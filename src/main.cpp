@@ -14,10 +14,10 @@ const int port = 21212;
 char ssid[] = SECRET_SSID;   // your network SSID (name)
 char pass[] = SECRET_PASS;   // your network password (use for WPA, or use as key for WEP)
 int status = WL_IDLE_STATUS; // the WiFi radio's status
-WiFiServer server(port);
 WiFiUDP udp;
-IPAddress broadcastIp;
-bool alreadyConnected = false; // whether or not the client was connected previously
+IPAddress connectedDevice = IPAddress(0, 0, 0, 0);
+char packetBuffer[255];                    //buffer to hold incoming packet
+char replyBuffer[] = "vaaka_acknowledged"; // a string to send back
 
 //HX711 constructor:
 HX711_ADC LoadCell(HX711_dout, HX711_sck);
@@ -168,6 +168,16 @@ void printWiFiData()
   printMacAddress(mac);
 }
 
+/**
+ * Transmit data with UDP to connected device
+ **/
+void transmitData(char buffer[])
+{
+  udp.beginPacket(connectedDevice, port);
+  udp.write(buffer);
+  udp.endPacket();
+}
+
 // the setup function runs once when you press reset or power the board
 void setup()
 {
@@ -215,8 +225,6 @@ void setup()
   }
 
   Serial.print("Starting server\n");
-  // start the server:
-  server.begin();
   udp.begin(port);
 
   Serial.print("You're connected to the network\n");
@@ -229,47 +237,45 @@ void setup()
 void loop()
 {
 
-  // wait for a new client:
-  WiFiClient client = server.available();
+  //----------------------------------Conn------------------------------
 
-  if (client)
+  // if there's data available, read a packet
+  int packetSize = udp.parsePacket();
+  if (packetSize)
   {
-    if (!alreadyConnected)
+    Serial.print("Received packet of size ");
+    Serial.println(packetSize);
+    Serial.print("From ");
+    IPAddress remoteIp = udp.remoteIP();
+    Serial.print(remoteIp);
+    Serial.print(", port ");
+    Serial.println(udp.remotePort());
+
+    // Read the packet into packetBufffer
+    int len = udp.read(packetBuffer, 255);
+    if (len > 0)
     {
-      // clead out the input buffer:
-      client.flush();
-      Serial.println("We have a new client");
-      client.println("Hello, client!");
-      alreadyConnected = true;
+      packetBuffer[len] = 0;
+    }
+    Serial.println("Contents:");
+    Serial.println(packetBuffer);
+
+    if (strcmp(packetBuffer, "vaaka_broadcast") == 0)
+    {
+      Serial.println("VAAKA RECEIVED");
+
+      connectedDevice = udp.remoteIP();
+
+      // Send response to connectingf device
+      transmitData(replyBuffer);
     }
 
-    if (client.available() > 0)
-    {
-      // read the bytes incoming from the client:
-      char thisChar = client.read();
-      // echo the bytes back to the client:
-      server.write(thisChar);
-      // echo the bytes to the server as well:
-      Serial.write(thisChar);
-    }
-  }
-  else if (!alreadyConnected)
-  {
-    // Send broadcast until a device connects to us
-    // When it has connected once, it must have this ip
-    Serial.print("Sending broadcast\n");
-    udp.beginPacket(IPAddress(255, 255, 255, 255), port);
-    char str[] = "vaaka";
-    udp.write(str);
-    udp.endPacket();
-
-    delay(500);
+    // Send scale data
   }
 
-  return;
-  //-----------------
+  //------------------------------Scale--------------------------
 
-  static boolean newDataReady = 0;
+  static boolean newDataReady = false;
   const int serialPrintInterval = 0; //increase value to slow down serial print activity
 
   // check for new data/start next conversion:
@@ -283,8 +289,11 @@ void loop()
     {
       float i = LoadCell.getData();
       //Serial.print("Load_cell output val: ");
-      //Serial.println(i);
-      newDataReady = 0;
+      Serial.println(i);
+      char dataBuffer[10];
+      snprintf(dataBuffer, 10, "%f", i);
+      transmitData(dataBuffer);
+      newDataReady = false;
       t = millis();
     }
   }
