@@ -9,18 +9,20 @@
 #include <Arduino.h>
 #include <HX711_ADC.h>
 
-
 HX711_ADC::HX711_ADC(uint8_t dout, uint8_t sck) //constructor
-{ 	
+{
 	doutPin = dout;
 	sckPin = sck;
-} 
+}
 
-void HX711_ADC::setGain(uint8_t gain)  //value should be 32, 64 or 128*
+void HX711_ADC::setGain(uint8_t gain) //value should be 32, 64 or 128*
 {
-	if(gain < 64) GAIN = 2; //32, channel B
-	else if(gain < 128) GAIN = 3; //64, channel A
-	else GAIN = 1; //128, channel A
+	if (gain < 64)
+		GAIN = 2; //32, channel B
+	else if (gain < 128)
+		GAIN = 3; //64, channel A
+	else
+		GAIN = 1; //128, channel A
 }
 
 //set pinMode, HX711 gain and power up the HX711
@@ -48,14 +50,14 @@ int HX711_ADC::start(unsigned int t)
 {
 	t += 400;
 	lastDoutLowTime = millis();
-	while(millis() < t) 
+	while (millis() < t)
 	{
 		update();
 		yield();
 	}
 	tare();
 	tareStatus = 0;
-}	
+}
 
 /*  start(t, dotare) with selectable tare:
 *	will do conversions continuously for 't' +400 milliseconds (400ms is min. settling time at 10SPS). 
@@ -64,7 +66,7 @@ int HX711_ADC::start(unsigned int t, bool dotare)
 {
 	t += 400;
 	lastDoutLowTime = millis();
-	while(millis() < t) 
+	while (millis() < t)
 	{
 		update();
 		yield();
@@ -74,7 +76,7 @@ int HX711_ADC::start(unsigned int t, bool dotare)
 		tare();
 		tareStatus = 0;
 	}
-}	
+}
 
 /*  startMultiple(t): use this if you have more than one load cell and you want to do tare and stabilization simultaneously.
 *	Will do conversions continuously for 't' +400 milliseconds (400ms is min. settling time at 10SPS). 
@@ -83,40 +85,44 @@ int HX711_ADC::startMultiple(unsigned int t)
 {
 	tareTimeoutFlag = 0;
 	lastDoutLowTime = millis();
-	if(startStatus == 0) {
-		if(isFirst) {
+	if (startStatus == 0)
+	{
+		if (isFirst)
+		{
 			startMultipleTimeStamp = millis();
-			if (t < 400) 
+			if (t < 400)
 			{
 				startMultipleWaitTime = t + 400; //min time for HX711 to be stable
-			} 
-			else 
+			}
+			else
 			{
 				startMultipleWaitTime = t;
 			}
 			isFirst = 0;
-		}	
-		if(millis() < startMultipleTimeStamp + startMultipleWaitTime) {
+		}
+		if (millis() < startMultipleTimeStamp + startMultipleWaitTime)
+		{
 			update(); //do conversions during stabilization time
 			yield();
 			return 0;
 		}
-		else { //do tare after stabilization time is up
+		else
+		{ //do tare after stabilization time is up
 			static unsigned long timeout = millis() + tareTimeOut;
 			doTare = 1;
 			update();
-			if(convRslt == 2) 
-			{	
+			if (convRslt == 2)
+			{
 				doTare = 0;
 				convRslt = 0;
 				startStatus = 1;
 			}
-			if (!tareTimeoutDisable) 
+			if (!tareTimeoutDisable)
 			{
-				if (millis() > timeout) 
-				{ 
-				tareTimeoutFlag = 1;
-				return 1; // Prevent endless loop if no HX711 is connected
+				if (millis() > timeout)
+				{
+					tareTimeoutFlag = 1;
+					return 1; // Prevent endless loop if no HX711 is connected
 				}
 			}
 		}
@@ -132,42 +138,46 @@ int HX711_ADC::startMultiple(unsigned int t, bool dotare)
 {
 	tareTimeoutFlag = 0;
 	lastDoutLowTime = millis();
-	if(startStatus == 0) {
-		if(isFirst) {
+	if (startStatus == 0)
+	{
+		if (isFirst)
+		{
 			startMultipleTimeStamp = millis();
-			if (t < 400) 
+			if (t < 400)
 			{
 				startMultipleWaitTime = t + 400; //min time for HX711 to be stable
-			} 
-			else 
+			}
+			else
 			{
 				startMultipleWaitTime = t;
 			}
 			isFirst = 0;
-		}	
-		if(millis() < startMultipleTimeStamp + startMultipleWaitTime) {
+		}
+		if (millis() < startMultipleTimeStamp + startMultipleWaitTime)
+		{
 			update(); //do conversions during stabilization time
 			yield();
 			return 0;
 		}
-		else { //do tare after stabilization time is up
-			if (dotare) 
+		else
+		{ //do tare after stabilization time is up
+			if (dotare)
 			{
 				static unsigned long timeout = millis() + tareTimeOut;
 				doTare = 1;
 				update();
-				if(convRslt == 2) 
-				{	
+				if (convRslt == 2)
+				{
 					doTare = 0;
 					convRslt = 0;
 					startStatus = 1;
 				}
-				if (!tareTimeoutDisable) 
+				if (!tareTimeoutDisable)
 				{
-					if (millis() > timeout) 
-					{ 
-					tareTimeoutFlag = 1;
-					return 1; // Prevent endless loop if no HX711 is connected
+					if (millis() > timeout)
+					{
+						tareTimeoutFlag = 1;
+						return 1; // Prevent endless loop if no HX711 is connected
 					}
 				}
 			}
@@ -177,20 +187,20 @@ int HX711_ADC::startMultiple(unsigned int t, bool dotare)
 }
 
 //zero the scale, wait for tare to finnish (blocking)
-void HX711_ADC::tare() 
+void HX711_ADC::tare()
 {
 	uint8_t rdy = 0;
 	doTare = 1;
 	tareTimes = 0;
 	tareTimeoutFlag = 0;
 	unsigned long timeout = millis() + tareTimeOut;
-	while(rdy != 2) 
+	while (rdy != 2)
 	{
 		rdy = update();
-		if (!tareTimeoutDisable) 
+		if (!tareTimeoutDisable)
 		{
-			if (millis() > timeout) 
-			{ 
+			if (millis() > timeout)
+			{
 				tareTimeoutFlag = 1;
 				break; // Prevent endless loop if no HX711 is connected
 			}
@@ -200,20 +210,20 @@ void HX711_ADC::tare()
 }
 
 //zero the scale, initiate the tare operation to run in the background (non-blocking)
-void HX711_ADC::tareNoDelay() 
+void HX711_ADC::tareNoDelay()
 {
 	doTare = 1;
 	tareTimes = 0;
 }
 
 //set new calibration factor, raw data is divided by this value to convert to readable data
-void HX711_ADC::setCalFactor(float cal) 
+void HX711_ADC::setCalFactor(float cal)
 {
 	calFactor = cal;
 }
 
 //returns 'true' if tareNoDelay() operation is complete
-bool HX711_ADC::getTareStatus() 
+bool HX711_ADC::getTareStatus()
 {
 	bool t = tareStatus;
 	tareStatus = 0;
@@ -221,25 +231,30 @@ bool HX711_ADC::getTareStatus()
 }
 
 //returns the current calibration factor
-float HX711_ADC::getCalFactor() 
+float HX711_ADC::getCalFactor()
 {
 	return calFactor;
+}
+
+uint8_t HX711_ADC::getDivBit()
+{
+	return divBit;
 }
 
 //call the function update() in loop or from ISR
 //if conversion is ready; read out 24 bit data and add to dataset, returns 1
 //if tare operation is complete, returns 2
 //else returns 0
-uint8_t HX711_ADC::update() 
+uint8_t HX711_ADC::update()
 {
 	byte dout = digitalRead(doutPin); //check if conversion is ready
-	if (!dout) 
+	if (!dout)
 	{
 		conversion24bit();
 		lastDoutLowTime = millis();
 		signalTimeoutFlag = 0;
 	}
-	else 
+	else
 	{
 		if (millis() > (lastDoutLowTime + SIGNAL_TIMEOUT))
 		{
@@ -256,81 +271,89 @@ float HX711_ADC::getData() // return fresh data from the moving average dataset
 	long data = 0;
 	//data = smoothedData() - tareOffset;
 	lastSmoothedData = smoothedData();
-	data = (lastSmoothedData >> divBit) - tareOffset ;
+	data = (lastSmoothedData >> divBit) - tareOffset;
 	//data = (data >> divBit);
-	
+
 	float x = (float)data / calFactor;
 	return x;
 }
 
-long HX711_ADC::smoothedData() 
+long HX711_ADC::smoothedData()
 {
 	long data = 0;
 	long L = 0xFFFFFF;
 	long H = 0x00;
 	//for (uint8_t r = 0; r < DATA_SET; r++) {
-	for (uint8_t r = 0; r < (samplesInUse + IGN_HIGH_SAMPLE + IGN_LOW_SAMPLE); r++) 
+	for (uint8_t r = 0; r < (samplesInUse + IGN_HIGH_SAMPLE + IGN_LOW_SAMPLE); r++)
 	{
-		if (L > dataSampleSet[r]) L = dataSampleSet[r]; // find lowest value
-		if (H < dataSampleSet[r]) H = dataSampleSet[r]; // find highest value
+		if (L > dataSampleSet[r])
+			L = dataSampleSet[r]; // find lowest value
+		if (H < dataSampleSet[r])
+			H = dataSampleSet[r]; // find highest value
 		data += dataSampleSet[r];
 	}
-	if(IGN_LOW_SAMPLE) data -= L; //remove lowest value
-	if(IGN_HIGH_SAMPLE) data -= H; //remove highest value
+	if (IGN_LOW_SAMPLE)
+		data -= L; //remove lowest value
+	if (IGN_HIGH_SAMPLE)
+		data -= H; //remove highest value
 	return data;
 }
 
-uint8_t HX711_ADC::conversion24bit()  //read 24 bit data, store in dataset and start the next conversion
+uint8_t HX711_ADC::conversion24bit() //read 24 bit data, store in dataset and start the next conversion
 {
 	conversionTime = micros() - conversionStartTime;
 	conversionStartTime = micros();
 	unsigned long data = 0;
 	uint8_t dout;
 	convRslt = 0;
-	if(SCK_DISABLE_INTERRUPTS) noInterrupts();
-	for (uint8_t i = 0; i < (24 + GAIN); i++) 
+	if (SCK_DISABLE_INTERRUPTS)
+		noInterrupts();
+	for (uint8_t i = 0; i < (24 + GAIN); i++)
 	{ //read 24 bit data + set gain and start next conversion
-		if(SCK_DELAY) delayMicroseconds(1); // could be required for faster mcu's, set value in config.h
+		if (SCK_DELAY)
+			delayMicroseconds(1); // could be required for faster mcu's, set value in config.h
 		digitalWrite(sckPin, 1);
-		if(SCK_DELAY) delayMicroseconds(1); // could be required for faster mcu's, set value in config.h
-		if (i < (24)) 
+		if (SCK_DELAY)
+			delayMicroseconds(1); // could be required for faster mcu's, set value in config.h
+		if (i < (24))
 		{
 			dout = digitalRead(doutPin);
 			data = data << 1;
-			if (dout) 
+			if (dout)
 			{
 				data++;
 			}
 		}
 		digitalWrite(sckPin, 0);
 	}
-	if(SCK_DISABLE_INTERRUPTS) interrupts(); 
+	if (SCK_DISABLE_INTERRUPTS)
+		interrupts();
 	//convert range from 0x800000 > 0x7FFFFF to 0x000000 > 0xFFFFFF:
-	data = data ^ 0x800000; // if the 24th bit is '1', change 24th bit to 0 
+	data = data ^ 0x800000; // if the 24th bit is '1', change 24th bit to 0
 	if ((data < 0x000000) || (data > 0xFFFFFF))
 	{
 		dataOutOfRange = 1;
 		Serial.println("dataOutOfRange");
 	}
-	if (readIndex == samplesInUse + IGN_HIGH_SAMPLE + IGN_LOW_SAMPLE - 1) 
+	if (readIndex == samplesInUse + IGN_HIGH_SAMPLE + IGN_LOW_SAMPLE - 1)
 	{
 		readIndex = 0;
 	}
-	else 
+	else
 	{
 		readIndex++;
 	}
-	if(data > 0)  
+	if (data > 0)
 	{
 		convRslt++;
 		dataSampleSet[readIndex] = (long)data;
-		if(doTare) 
+		if (doTare)
 		{
-			if (tareTimes < DATA_SET) 
+			if (tareTimes < DATA_SET)
 			{
 				tareTimes++;
 			}
-			else 
+			else
 			{
 				tareOffset = (smoothedData() >> divBit);
 				tareTimes = 0;
@@ -343,20 +366,20 @@ uint8_t HX711_ADC::conversion24bit()  //read 24 bit data, store in dataset and s
 }
 
 //power down the HX711
-void HX711_ADC::powerDown() 
+void HX711_ADC::powerDown()
 {
 	digitalWrite(sckPin, LOW);
 	digitalWrite(sckPin, HIGH);
 }
 
 //power up the HX711
-void HX711_ADC::powerUp() 
+void HX711_ADC::powerUp()
 {
 	digitalWrite(sckPin, LOW);
 }
 
 //get the tare offset (raw data value output without the scale "calFactor")
-long HX711_ADC::getTareOffset() 
+long HX711_ADC::getTareOffset()
 {
 	return tareOffset;
 }
@@ -378,22 +401,22 @@ int HX711_ADC::getReadIndex()
 //returns latest conversion time in millis
 float HX711_ADC::getConversionTime()
 {
-	return conversionTime/1000.0;
+	return conversionTime / 1000.0;
 }
 
 //for testing and debugging:
-//returns the HX711 conversions ea seconds based on the latest conversion time. 
+//returns the HX711 conversions ea seconds based on the latest conversion time.
 //The HX711 can be set to 10SPS or 80SPS. For general use the recommended setting is 10SPS.
 float HX711_ADC::getSPS()
 {
-	float sps = 1000000.0/conversionTime;
+	float sps = 1000000.0 / conversionTime;
 	return sps;
 }
 
 //for testing and debugging:
-//returns the tare timeout flag from the last tare operation. 
+//returns the tare timeout flag from the last tare operation.
 //0 = no timeout, 1 = timeout
-bool HX711_ADC::getTareTimeoutFlag() 
+bool HX711_ADC::getTareTimeoutFlag()
 {
 	return tareTimeoutFlag;
 }
@@ -403,7 +426,7 @@ void HX711_ADC::disableTareTimeout()
 	tareTimeoutDisable = 1;
 }
 
-long HX711_ADC::getSettlingTime() 
+long HX711_ADC::getSettlingTime()
 {
 	long st = getConversionTime() * DATA_SET;
 	return st;
@@ -415,23 +438,59 @@ void HX711_ADC::setSamplesInUse(int samples)
 {
 	int old_value = samplesInUse;
 	int old_divbit = divBit;
-	
-	if(samples <= SAMPLES)
+
+	if (samples <= SAMPLES)
 	{
-		if(samples == 0) {samplesInUse = SAMPLES; divBit = divBitCompiled;} //reset to the original value
-		else if(samples == 1) {samplesInUse = 1; divBit = 0;}
-		else if((samples > 1) && (samples < 4)) {samplesInUse = 2; divBit = 1;}
-		else if((samples >= 4) && (samples < 8)) {samplesInUse = 4; divBit = 2;}
-		else if((samples >= 8) && (samples < 16)) {samplesInUse = 8; divBit = 3;}
-		else if((samples >= 16) && (samples < 32)) {samplesInUse = 16; divBit = 4;}
-		else if((samples >= 32) && (samples < 64)) {samplesInUse = 32; divBit = 5;}
-		else if((samples >= 64) && (samples < 128)) {samplesInUse = 64; divBit = 6;}
-		else {samplesInUse = 128; divBit = 7;}
-		
-		//replace the value of all samples in use with the last conversion value
-		if(samplesInUse != old_value) 
+		if (samples == 0)
 		{
-			for (uint8_t r = 0; r < samplesInUse + IGN_HIGH_SAMPLE + IGN_LOW_SAMPLE; r++) 
+			samplesInUse = SAMPLES;
+			divBit = divBitCompiled;
+		} //reset to the original value
+		else if (samples == 1)
+		{
+			samplesInUse = 1;
+			divBit = 0;
+		}
+		else if ((samples > 1) && (samples < 4))
+		{
+			samplesInUse = 2;
+			divBit = 1;
+		}
+		else if ((samples >= 4) && (samples < 8))
+		{
+			samplesInUse = 4;
+			divBit = 2;
+		}
+		else if ((samples >= 8) && (samples < 16))
+		{
+			samplesInUse = 8;
+			divBit = 3;
+		}
+		else if ((samples >= 16) && (samples < 32))
+		{
+			samplesInUse = 16;
+			divBit = 4;
+		}
+		else if ((samples >= 32) && (samples < 64))
+		{
+			samplesInUse = 32;
+			divBit = 5;
+		}
+		else if ((samples >= 64) && (samples < 128))
+		{
+			samplesInUse = 64;
+			divBit = 6;
+		}
+		else
+		{
+			samplesInUse = 128;
+			divBit = 7;
+		}
+
+		//replace the value of all samples in use with the last conversion value
+		if (samplesInUse != old_value)
+		{
+			for (uint8_t r = 0; r < samplesInUse + IGN_HIGH_SAMPLE + IGN_LOW_SAMPLE; r++)
 			{
 				dataSampleSet[r] = (lastSmoothedData >> old_divbit);
 			}
@@ -457,10 +516,12 @@ bool HX711_ADC::refreshDataSet()
 {
 	int s = getSamplesInUse() + IGN_HIGH_SAMPLE + IGN_LOW_SAMPLE; // get number of samples in dataset
 	resetSamplesIndex();
-	while ( s > 0 ) {
+	while (s > 0)
+	{
 		update();
 		yield();
-		if (digitalRead(doutPin) == LOW) { // HX711 dout pin is pulled low when a new conversion is ready
+		if (digitalRead(doutPin) == LOW)
+		{			   // HX711 dout pin is pulled low when a new conversion is ready
 			getData(); // add data to the set and start next conversion
 			s--;
 		}
@@ -472,7 +533,7 @@ bool HX711_ADC::refreshDataSet()
 bool HX711_ADC::getDataSetStatus()
 {
 	bool i = false;
-	if (readIndex == samplesInUse + IGN_HIGH_SAMPLE + IGN_LOW_SAMPLE - 1) 
+	if (readIndex == samplesInUse + IGN_HIGH_SAMPLE + IGN_LOW_SAMPLE - 1)
 	{
 		i = true;
 	}
@@ -487,7 +548,7 @@ float HX711_ADC::getNewCalibration(float known_mass)
 	float new_calFactor;
 	new_calFactor = (readValue * exist_calFactor) / known_mass;
 	setCalFactor(new_calFactor);
-    return new_calFactor;
+	return new_calFactor;
 }
 
 //returns 'true' if it takes longer time then 'SIGNAL_TIMEOUT' for the dout pin to go low after a new conversion is started

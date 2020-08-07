@@ -257,17 +257,45 @@ void loop()
     {
       packetBuffer[len] = 0;
     }
-    Serial.println("Contents:");
+    Serial.println("Contents: ");
     Serial.println(packetBuffer);
 
-    if (strcmp(packetBuffer, "vaaka_broadcast") == 0)
+    // Commands to the scale come in format: vaaka_commandname,commandvalue
+    // For example: vaaka_tare,164.0000001
+
+    // Extract the first token/command
+    char *token = strtok(packetBuffer, ",");
+
+    if (strcmp(token, "vaaka_broadcast") == 0)
     {
-      Serial.println("VAAKA RECEIVED");
-
+      Serial.println("Device connected");
       connectedDevice = udp.remoteIP();
-
-      // Send response to connectingf device
       transmitData(replyBuffer);
+    }
+    else if (strcmp(token, "vaaka_tare") == 0)
+    {
+      Serial.println("Received tare command");
+
+      // Get command value (tare value)
+      token = strtok(NULL, " ");
+
+      if (token == NULL)
+      {
+        Serial.println("Invalid format");
+      }
+      else
+      {
+        int tareValue = (int)atof(token);
+
+        //long data = tareValue * LoadCell.getCalFactor();
+        //long smoothedData = (data + LoadCell.getTareOffset()) << LoadCell.getDivBit();
+        //long calculatedTareOffset = smoothedData >> LoadCell.getDivBit();
+
+        Serial.print("Tare value: ");
+        Serial.println(tareValue);
+
+        LoadCell.tareNoDelay();
+      }
     }
 
     // Send scale data
@@ -289,7 +317,7 @@ void loop()
     {
       float i = LoadCell.getData();
       //Serial.print("Load_cell output val: ");
-      Serial.println(i);
+      //Serial.println(i);
       char dataBuffer[10];
       snprintf(dataBuffer, 10, "%f", i);
       transmitData(dataBuffer);
